@@ -139,7 +139,10 @@ FROM restdata;
 (1 row)
 ```
 
+## Join data from different sources
+
 We can get fancy and use postgres to join the data from the cvs and json datasets together.
+
 Note: In country_full.csv - csv_data[2] is the code and cvs_data[6] is the continent.
 
 ```
@@ -172,3 +175,37 @@ ORDER BY continent;
 ```
 
 
+## Materialized views
+
+To speed things up with large datasets, reduce network traffic or if you have a rate limit on api calls it may be useful to make a materialized view.
+
+```
+CREATE MATERIALIZED VIEW coviddata AS
+   SELECT json_array_elements(content::json) AS d FROM http_get('https://covid19-api.com/country/all?format=json');
+```
+
+Now we can query the materialized view and not connect to the rest api server or other web host.
+
+```
+SELECT d->>'country' AS country FROM coviddata ORDER BY d->>'country' LIMIT 10;
+```
+```
+       country       
+---------------------
+ Afghanistan
+ Albania
+ Algeria
+ American Samoa
+ Andorra
+ Angola
+ Anguilla
+ Antarctica
+ Antigua and Barbuda
+ Argentina
+(10 rows)
+```
+
+Remeber to refresh the  materialized view when its data needs to be updated:
+```
+REFRESH MATERIALIZED VIEW coviddata;
+```
