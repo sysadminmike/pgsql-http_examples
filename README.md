@@ -472,6 +472,7 @@ TODO
 ## Pagination
 How to deal with API which have limited number of items per page and do not allow you to access them in one request.
 Create function to load each page/chunk to a temp table.
+Another way maybe to run UNION ALL with multpile requests to server with page_no incrementing
 
 ## Other uses
 Mailgun or twillio to download and archive logs as they limited retention period but logs are exposed via api.
