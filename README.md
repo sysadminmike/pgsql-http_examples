@@ -75,7 +75,7 @@ SELECT DISTINCT json_object_keys(jsondata) AS myfields FROM restapidata ORDER BY
 (10 rows)
 ```
 
-If you run  ```curl -X GET "https://covid19-api.com/country/all?format=json" -H  "accept: application/json" ``` you can see what postgres is fetching.
+If you run  ```curl -X GET "https://covid19-api.com/country/all?format=json" -H  "accept: application/json"``` you can see what postgres is fetching.
 
 
 Looking at some data:
@@ -138,4 +138,37 @@ FROM restdata;
        387378481 |       307267272 |      6336161
 (1 row)
 ```
+
+We can get fancy and use postgres to join the data from the cvs and json datasets together.
+Note: In country_full.csv - csv_data[2] is the code and cvs_data[6] is the continent.
+
+```
+WITH restdata AS (
+   SELECT json_array_elements(content::json) AS d FROM http_get('https://covid19-api.com/country/all?format=json')
+),
+countrydata AS (
+  SELECT csv_parse(content) AS csv_data FROM http_get('https://cdn.wsform.com/wp-content/uploads/2018/09/country_full.csv')
+)
+SELECT countrydata.csv_data[6] AS continent,
+       COUNT(restdata.d->>'country') AS country_count,
+       SUM(CAST(d->>'confirmed' AS integer)) AS total_confirmed, 
+       SUM(CAST(d->>'recovered' AS integer)) AS total_recovered, 
+       SUM(CAST(d->>'deaths' AS integer))    AS total_deaths
+FROM restdata 
+JOIN countrydata ON (restdata.d->>'code' = countrydata.csv_data[2])
+GROUP BY continent
+HAVING  COUNT(restdata.d->>'country') > 1
+ORDER BY continent;
+```
+```
+ continent | country_count | total_confirmed | total_recovered | total_deaths 
+-----------+---------------+-----------------+-----------------+--------------
+ Africa    |            60 |        11159234 |         9952687 |       240442
+ Americas  |            57 |       139380190 |       100646266 |      2549995
+ Asia      |            51 |       101977101 |        94226233 |      1302306
+ Europe    |            51 |       131955858 |        99956943 |      2234155
+ Oceania   |            29 |         2841370 |         2484645 |         6394
+(5 rows)
+```
+
 
