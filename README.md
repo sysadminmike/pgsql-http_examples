@@ -437,11 +437,24 @@ SELECT doc->>'_id' AS id, doc->>'title' AS title FROM resultdocs;
 (10 rows)
 
 Time: 225.286 ms
+
 ```
 Its useful to check on stuff with curl on the command line sometimes below is example of the POST request:
+
 ```curl -H 'Content-Type: application/json' -X POST http://192.168.3.25:5984/articles/_find -d '{"selector":{"title":{"$regex": "FreeBSD"}},"limit": 10}' -u admin:pass -i```
+
 
 ## Elasticsearch 
 TODO
+
+## Pagination
+How to deal with API which have limited number of items per page and do not allow you to access them in one request.
+Create function to load each page/chunk to a temp table.
+
+## Other uses
+Mailgun or twillio to download and archive logs as they limited retention period but logs are exposed via api.
+Other useful APIs to example use with?
+
+
 
 
