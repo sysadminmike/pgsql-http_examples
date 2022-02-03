@@ -46,3 +46,6 @@ SELECT csv_data[1] AS country, csv_data[2] AS code FROM parsed_data;
  Zimbabwe                                     | ZW
 (249 rows)
 ```
+
+Much more useful, as with all examples queries could include joins to other tables and views in a database.
+
