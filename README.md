@@ -247,3 +247,159 @@ FROM unnestdata LIMIT 10;
  I have tried to use xpath to extract a table from various webpages but most are not valid and found ```SELECT xml_is_well_formed(content) FROM rawxml;``` is a useful query when trying to parse xml documents.
 
 
+
+## Working with CouchDB 
+
+This scales pretty well for example the couchdb database being used as an example is a bit less than 1Gb and contains over 250,000 documents.
+
+Need to set some options or it will timeout plus couchdb wants a user and password, these get reset if you reconnect to postgres.
+
+```
+SELECT * FROM http_set_curlopt('CURLOPT_USERPWD', 'admin:passwd');
+SELECT * FROM http_set_curlopt('CURLOPT_TIMEOUT', '3600');
+SELECT * FROM http_list_curlopt();
+```
+```
+     curlopt     |     value      
+-----------------+----------------
+ CURLOPT_TIMEOUT | 3600
+ CURLOPT_USERPWD | admin:password
+(2 rows)
+```
+
+
+Lets grab all the couchdb docs and put them into a materialized view with a copy of the document id field "key" and the whole document in jsonb field called "doc".
+
+```
+CREATE MATERIALIZED VIEW couchdata AS
+ 
+   SELECT * FROM json_to_recordset(
+     (
+        SELECT (content::json->>'rows')::json 
+        FROM http_get('http://192.168.3.25:5984/articles/_all_docs?include_docs=true')
+      )
+ 
+   ) AS couchdata (key text, doc jsonb);
+```
+
+Timed output from psql so you can see its pretty fast - not sure how any script to pull the data and insert it could be any faster.
+
+```
+=# CREATE MATERIALIZED VIEW couchdata AS
+-#  
+-#    SELECT * FROM json_to_recordset(
+(#      (
+(#         SELECT (content::json->>'rows')::json 
+(#         FROM http_get('http://192.168.3.25:5984/articles/_all_docs?include_docs=true')
+(#       )
+(#  
+(#    ) AS couchdata (key text, doc jsonb);
+SELECT 295276
+Time: 87150.647 ms (01:27.151)
+```
+
+```
+SELECT count(*) FROM couchdata;
+ count  
+--------
+ 295276
+(1 row)
+```
+
+Lets see what fields there are:
+
+```SELECT DISTINCT jsonb_object_keys(doc) AS myfields FROM couchdata ORDER BY myfields;```
+```
+  myfields   
+-------------
+ _id
+ _rev
+ description
+ feedName
+ icon
+ indexes
+ language
+ link
+ pubDate
+ pubDateTS
+ read
+ starred
+ tags
+ title
+ views
+(15 rows)
+```
+
+And take a look at some doc titles:
+
+```SELECT doc->>'title' as title FROM couchdata LIMIT 5;```
+```
+                                                     title                                                      
+-------------------------------------------------------------------------------------------------------------------
+ Revolutionary lung cancer drug made available on NHS in England
+ Microsoft stands on shore as tablet-laden boat sails away
+ Japan Eyes World's Fastest-Known Supercomputer, To Spend Over $150M On It
+ In a Throwback To the '90s, NTFS Bug Lets Anyone Hang Or Crash Windows 7, 8.1
+ GNOME's New Human Interface Guidelines Now Official
+(5 rows)
+```
+
+And again whenever you need an updated version of the data you can just refresh the view:
+
+```REFRESH MATERIALIZED VIEW couchdata;```
+
+If you need a near realtime version of your couch data in postgres take a look at: https://github.com/sysadminmike/couch-to-postgres
+ 
+
+
+## Manipulating incomming data 
+
+Using couchdb as an example to add/modify data for example extract the title from the doc json or make it easier to search.
+
+```
+CREATE MATERIALIZED VIEW couchsearch AS   
+  WITH cj AS (
+   SELECT * FROM json_to_recordset(
+     (
+        SELECT (content::json->>'rows')::json 
+        FROM http_get('http://192.168.3.25:5984/articles/_all_docs?include_docs=true')
+      )) AS couchdata (key text, doc jsonb)
+   )
+   SELECT key, doc->>'title'::text AS title, 
+         setweight(to_tsvector('pg_catalog.english', coalesce(doc->>'title','')), 'A') || 
+         setweight(to_tsvector('pg_catalog.english', coalesce(doc->>'description','')), 'D') AS tsv,
+         doc
+   FROM cj;
+```
+
+The above took ```Time: 167910.774 ms (02:47.911)``` to run which isnt bad to grab nearly 300k documents and create a ts vector for them, there were a few warnings from to_tsvector:
+```
+NOTICE:  word is too long to be indexed
+DETAIL:  Words longer than 2047 characters are ignored.
+```
+
+Searching takes under a second on a two word query:
+```
+SELECT title,
+       ts_rank_cd(tsv, to_tsquery('FreeBSD & Postgres')) AS rank
+FROM couchsearch 
+WHERE tsv @@ to_tsquery('FreeBSD & Postgres')
+ORDER BY rank DESC LIMIT 10;
+```
+```
+                                  title                                   |     rank     
+--------------------------------------------------------------------------+--------------
+ Postgres in FreeBSD Jails                                                |          0.5
+ This week's Postgres news                                                |   0.06458476
+ A library for parsing and deparsing Postgres queries                     |  0.039215688
+ psql tips                                                                |   0.01969697
+ How 'RETURNING' yielded a 9x performance improvement                     |  0.018382354
+ In Other BSDs for 2019/08/31                                             |  0.013636364
+ Working with row level security in Postgres                              |  0.011190476
+ Making Mystery-Solving Easier with `auto_explain`                        | 0.0051190476
+ PostgreSQL Weekly News - January  2, 2022                                |        0.004
+ SysAdmin1138: Sysadmins and risk-management                              | 0.0037037039
+(10 rows)
+
+Time: 912.203 ms
+```
