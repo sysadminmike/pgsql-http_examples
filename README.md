@@ -403,3 +403,38 @@ ORDER BY rank DESC LIMIT 10;
 
 Time: 912.203 ms
 ```
+
+
+## POST-ing
+
+All previous examples were just using GET.
+Using couchdb json query syntax: https://docs.couchdb.org/en/3.2.0/api/database/find.html we need to POST rather than GET.
+Limit of 10 is being added to request to couchdb so we can reduce the number of records before they hit postgres.
+
+```
+WITH postdata AS (
+   SELECT CAST(content::json->>'docs' AS json) AS docs
+   FROM http_post('http://192.168.3.25:5984/articles/_find', '{"selector":{"title":{"$regex": "FreeBSD"}},"limit": 10}', 'application/json')
+ ),
+ resultdocs AS (
+   SELECT json_array_elements(docs) AS doc FROM postdata
+ )
+SELECT doc->>'_id' AS id, doc->>'title' AS title FROM resultdocs;
+```
+```
+                    id                    |                                         title                                         
+------------------------------------------+---------------------------------------------------------------------------------------
+ 007c351df62d0abb42810ee1b8be16ada89b67d2 | OpenLIBM: Replace nextafterl function with FreeBSD's version
+ 00f26b4d7abba1599972498e50ccdb2c2afd33a9 | FreeBSD 11.0 RC3 Released, OS Still Trying To Get Out This Month
+ 011b7c7e6c8c0d189f3d48beced1fa8e99689d76 | FreeBSD 11.3 Beta 2 Brings Virtualization Updates, Exposes MD_CLEAR MDS Bit To Guests
+ 0132a0b6f09d9a7dd48af6a6262578e030d3a217 | sbin/newfs_msdos: Bring in FreeBSD/Git 47266d91, b25a2bc0
+ 013924c18386b65224082db1b58caabbfdaf11e9 | Bring in efibootmgr(8) from FreeBSD.
+ 013999e30ae9e261f468096b6e568461754f92bf | bsd-family-tree: Sync with FreeBSD (DragonFly 4.6.0).
+ 0169ecc2b421d2538cbbf478d0643b8061c3faf2 | Getting RabbitMQ running: FreeBSD 9.2
+ 017ad2ca04ce90602ed97ca95e189c4c149aebe9 | makewhatis(8): small cleanups, reduce diff against FreeBSD
+ 01db4f923c378c86e4f7b37808f7d51b37a2b035 | bsd-family-tree: Sync with FreeBSD (2.11BSD release date fix).
+ 022908a02b83aa81b32a3572f44af97a3a5e6c2d | FreeBSD 9.2 Is Behind Schedule, RC4 Released
+(10 rows)
+
+Time: 225.286 ms
+```
