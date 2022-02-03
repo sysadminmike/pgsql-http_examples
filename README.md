@@ -209,3 +209,41 @@ Remeber to refresh the  materialized view when its data needs to be updated:
 ```
 REFRESH MATERIALIZED VIEW coviddata;
 ```
+
+
+## XML / RSS feeds
+
+The xml document must be valid or xpath will error. 
+
+```
+WITH rawxml AS (
+   SELECT content::xml FROM http_get('https://feeds.theguardian.com/theguardian/science/rss')
+), 
+unnestdata AS (  
+   SELECT unnest(xpath('//item/title/text()', content)) as title,
+          unnest(xpath('//item/link/text()', content)) as link
+   FROM rawxml
+)
+SELECT substring(title::text,1,35) AS title,
+       link::text AS link
+FROM unnestdata LIMIT 10;
+```
+```
+                title                |                                                                      link                                                                      
+-------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------
+ International Space Station will pl | https://www.theguardian.com/science/2022/feb/02/international-space-station-will-plummet-to-a-watery-grave-in-2030
+ The great gaslighting: how Covid lo | https://www.theguardian.com/society/2022/feb/03/long-covid-fight-recognition-gaslighting-pandemic
+ German researchers to breed pigs fo | https://www.theguardian.com/science/2022/feb/03/german-researchers-to-breed-pigs-for-human-heart-transplants
+ First patients of pioneering CAR T- | https://www.theguardian.com/society/2022/feb/02/first-patients-pioneering-car-t-cell-therapy-cured-of-cancer
+ Super corals: the race to save the  | https://www.theguardian.com/environment/gallery/2022/feb/03/super-corals-the-race-to-save-the-worlds-reefs-from-the-climate-crisis-in-pictures
+ Antarcticaâs âDoomsday Glacierâ kee | https://www.theguardian.com/world/2022/feb/02/antarctica-doomsday-glacier-scientists-frustrated-iceberg
+ Are we getting any closer to unders | https://www.theguardian.com/science/audio/2022/feb/03/are-we-getting-any-closer-to-understanding-long-covid
+ Covid vaccine hesitancy could be li | https://www.theguardian.com/society/2022/feb/01/covid-vaccine-hesitancy-could-be-linked-childhood-trauma-research
+ Rise in Covid cases in England as r | https://www.theguardian.com/world/2022/jan/31/spike-in-covid-cases-in-england-as-reinfections-included-for-first-time
+ Joe Roganâs Covid claims: what does | https://www.theguardian.com/culture/2022/jan/31/joe-rogan-covid-claims-what-does-the-science-actually-say
+(10 rows)
+```
+
+ I have tried to use xpath to extract a table from various webpages but most are not valid and found ```SELECT xml_is_well_formed(content) FROM rawxml;``` is a useful query when trying to parse xml documents.
+
+
