@@ -444,6 +444,28 @@ Its useful to check on stuff with curl on the command line sometimes below is ex
 ```curl -H 'Content-Type: application/json' -X POST http://192.168.3.25:5984/articles/_find -d '{"selector":{"title":{"$regex": "FreeBSD"}},"limit": 10}' -u admin:pass -i```
 
 
+Its possible to add/update the data in couchdb using this extension. For example the below trigger can be added to a table or view to also update couch when postgres data is updated.
+
+```
+CREATE OR REPLACE FUNCTION couchdb_post() RETURNS trigger AS $BODY$
+  DECLARE
+      RES RECORD;
+  BEGIN
+   IF (NEW.from_pg) IS NULL THEN
+     RETURN NEW;
+   ELSE 
+     
+     SELECT status FROM http_post('http://192.168.3.21:5984/' || TG_TABLE_NAME || '/' || NEW.id::text, '', NEW.doc::text, 'application/json'::text) INTO RES;    
+     --Need to check RES for response code
+     --RAISE EXCEPTION 'Result: %', RES;
+     RETURN null;
+   END IF;
+  END;
+  $BODY$
+LANGUAGE plpgsql VOLATILE  
+```
+ 
+
 ## Elasticsearch 
 TODO
 
