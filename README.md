@@ -4,11 +4,12 @@ Example uses for PostgreSQL HTTP Client - https://github.com/pramsey/pgsql-http
 There is little infomation about this extension as I do not think people realise how useful it is, hopefully these examples will give other people ideas of how useful it can be.
 
 
-##Grab cvs file from a webserver
+## Grab cvs file from a webserver
 
 ```
 SELECT content FROM http_get('https://cdn.wsform.com/wp-content/uploads/2018/09/country.csv');
-
+```
+```
                       content                      
 ---------------------------------------------------
  Name,Code                                        +
@@ -31,7 +32,8 @@ WITH parsed_data AS (
   SELECT csv_parse(content) AS csv_data FROM http_get('https://cdn.wsform.com/wp-content/uploads/2018/09/country.csv')
 )
 SELECT csv_data[1] AS country, csv_data[2] AS code FROM parsed_data;
-
+```
+```
                    country                    | code 
 ----------------------------------------------+------
  Afghanistan                                  | AF
