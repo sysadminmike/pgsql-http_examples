@@ -467,7 +467,12 @@ LANGUAGE plpgsql VOLATILE
  
 
 ## Elasticsearch 
-TODO
+Need example of:
+
+Query exising data 
+
+Trigger on table(s) in db to update/add/delete doc from es - ie no need for logstash/jdbc or external program like pgsync or having to update ES index and postgres within application.
+
 
 ## Pagination
 How to deal with API which have limited number of items per page and do not allow you to access them in one request.
