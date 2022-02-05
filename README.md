@@ -467,11 +467,71 @@ LANGUAGE plpgsql VOLATILE
  
 
 ## Elasticsearch 
-Need example of:
 
-Query exising data 
+Assuming ES already has the data from the previous couchdb example, later on will give example how this was done.
 
-Trigger on table(s) in db to update/add/delete doc from es - ie no need for logstash/jdbc or external program like pgsync or having to update ES index and postgres within application.
+```curl -XGET 'http://192.168.3.20:9200/_cat/indices?v&pretty' -q```
+
+
+Curl query:
+
+curl -X GET "http://192.168.3.20:9200/myindex/_search?pretty" -H 'Content-Type: application/json' -d'{"query": {"query_string": {"query": "(FreeBSD) OR (Postgres)","fields": ["title","description"]}}}'
+
+
+TODO - SQL example of this query to show how to get ES data into postgres.
+
+
+
+### Example of loading data to ES
+
+Sticking with the key, doc simple example with the doc being a json document.
+
+```
+CREATE TABLE public.estable (
+    key text,
+    doc jsonb
+);
+```
+
+
+We need a trigger function to update ES when table is updated.
+
+```
+CREATE OR REPLACE FUNCTION upsert_es() RETURNS trigger AS $BODY$
+  DECLARE
+      RES RECORD;
+      ESDOC jsonb;  
+  BEGIN
+     
+     ESDOC = NEW.doc #- '{"_id"}'; -- need to remove _id field from json doc or es gets upset
+                                   -- note other processing can be done before data is set to es
+                                   
+     SELECT * FROM http_post('http://192.168.3.20:9200/myindex/_update/' || NEW.key, 
+                                  '{"doc":' || ESDOC::text || ',  "doc_as_upsert": true}', 
+                                  'application/json'::text) INTO RES;    
+                                  
+     --Need to check RES for response code
+     --RAISE EXCEPTION 'Result: %', RES.content; -- enable for debugging
+     RETURN null;
+  END;
+  $BODY$
+LANGUAGE plpgsql VOLATILE;
+```
+
+Add add trigger to the table:
+
+```
+CREATE TRIGGER es_upsert_trigger AFTER INSERT OR UPDATE ON public.estable FOR EACH ROW EXECUTE FUNCTION public.upsert_es();
+```
+
+Lets grab the data we had from the couchdb materilised view and insert into the estable which the trigger in turn should insert into ES.
+
+```
+INSERT INTO estable (key, doc)
+   SELECT key, doc FROM couchdata;
+```
+
+TODO - show output etc
 
 
 ## Pagination
