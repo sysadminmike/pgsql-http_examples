@@ -1,5 +1,13 @@
 # pgsql-http_examples
-Example uses for PostgreSQL HTTP Client - https://github.com/pramsey/pgsql-http 
+Example uses for PostgreSQL HTTP Client - https://github.com/pramsey/pgsql-http  eg:
+
+Use with csv   
+Json rest api   
+Joining different web datasources   
+XML/RSS   
+Couchdb (query and updating)   
+Elasticsearch (query and updating)   
+
 
 There is little infomation about this extension as I do not think people realise how useful it is, hopefully these examples will give other people ideas what can be done.
 
