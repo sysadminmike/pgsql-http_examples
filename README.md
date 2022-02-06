@@ -256,7 +256,7 @@ FROM unnestdata LIMIT 10;
 
 
 
-## Working with CouchDB 
+## CouchDB
 
 This scales pretty well for example the couchdb database being used as an example is a bit less than 1Gb and contains over 250,000 documents.
 
@@ -356,8 +356,7 @@ And again whenever you need an updated version of the data you can just refresh 
 
 ```REFRESH MATERIALIZED VIEW couchdata;```
 
-If you need a near realtime version of your couch data in postgres take a look at: https://github.com/sysadminmike/couch-to-postgres
- 
+If you need a near realtime version of your couch data in postgres take a look at: https://github.com/sysadminmike/couch-to-postgres - examples of how to update couchdb in readme for that repo.
 
 
 ## Manipulating incomming data 
