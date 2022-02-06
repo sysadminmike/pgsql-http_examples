@@ -385,7 +385,7 @@ NOTICE:  word is too long to be indexed
 DETAIL:  Words longer than 2047 characters are ignored.
 ```
 
-Searching takes under a second on a two word query:
+Searching takes under a second on a two word query with no proper index:
 ```
 SELECT title,
        ts_rank_cd(tsv, to_tsquery('FreeBSD & Postgres')) AS rank
@@ -482,12 +482,38 @@ Assuming ES already has the data from the previous couchdb example, later on wil
 
 Curl query:
 
-curl -X GET "http://192.168.3.20:9200/myindex/_search?pretty" -H 'Content-Type: application/json' -d'{"query": {"query_string": {"query": "(FreeBSD) OR (Postgres)","fields": ["title","description"]}}}'
+```curl -X GET "http://192.168.3.20:9200/myindex/_search?pretty" -H 'Content-Type: application/json' -d'{"query": {"query_string": {"query": "(FreeBSD) AND (Postgres)","fields": ["title","description"]}}}'```
 
 
-TODO - SQL example of this query to show how to get ES data into postgres.
+```
+WITH esresults AS (
+ SELECT * FROM json_array_elements(
+   (   
+    SELECT content::json->'hits'->'hits' 
+    FROM http_post('http://192.168.3.20:9200/myindex/_search', '{"query": {"query_string": {"query": "(FreeBSD) AND (Postgres)","fields": ["title","description"]}}}', 'application/json')
+   )    
+ )
+)
+SELECT value->'_source'->>'title' AS title, value->>'_score' AS score, value->>'_id' AS key FROM esresults;
+```
 
+```
+                            title                            |   score   |                   key                    
+-------------------------------------------------------------+-----------+------------------------------------------
+ Postgres in FreeBSD Jails                                   | 16.49     | cc9b18ab5fc0aa52683bfe9caefa074c01f9a56b
+ In Other BSDs for 2019/08/31                                | 13.386754 | 4be3937d22a6588a68da53fddfa67ea0c44fe1f7
+ In Other BSDs for 2019/07/20                                | 13.136084 | 62a3481d48883db9ef0ef0b16cdc535b86ff3d95
+ FreeBSD and beadm                                           | 12.622444 | 116a761005ee1c2d3a256c5d12821e84ccbc52aa
+ Making Mystery-Solving Easier with `auto_explain`           | 11.840082 | 2ee5fb5c4bda381d8bd03eddb84fef4e4b770f18
+ Lazy Reading for 2013/04/14                                 | 11.468759 | c9cd3a7cd3af31c24ecd2f0ad40099e8
+ A library for parsing and deparsing Postgres queries        | 11.342295 | 5d0736acb1642fe7ba154f30e83339952e6bc7bf
+ How 'RETURNING' yielded a 9x performance improvement        | 11.208527 | b1ca76d29ea69e5597962a9709c67d8ca533408d
+ This week's Postgres news                                   | 11.17545  | 3bb475609846a8c419f63114d7042fe6ce5b1581
+ An intro to making Postgres high availability on Kubernetes | 10.925192 | bd4bdc5626a37e741ae45031b813f882cc1df022
+(10 rows)
 
+Time: 15.015 ms
+```
 
 ### Example of loading data to ES
 
