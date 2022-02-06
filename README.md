@@ -531,7 +531,57 @@ INSERT INTO estable (key, doc)
    SELECT key, doc FROM couchdata;
 ```
 
-TODO - show output etc
+
+Below is output from pgsql as you can see it takes over 3 hours to insert into ES as we are submitting each record separatley.
+
+```
+# INSERT INTO estable (key, doc) SELECT key, doc FROM couchdata;
+INSERT 0 295417
+Time: 13020441.452 ms (03:37:00.441)
+```
+
+A quick test to see how fast this is when records already exist in ES is its just a noop
+
+```
+# delete from estable;   
+DELETE 295417
+Time: 16954.411 ms (00:16.954)
+# INSERT INTO estable (key, doc)
+   SELECT key, doc FROM couchdata;
+INSERT 0 295417
+Time: 453780.787 ms (07:33.781)
+```
+
+So a significant improvement so lets bulk insert the records into ES 
+
+```
+WITH alldocs AS ( 
+  SELECT key, doc #- '{"_id"}' AS doc 
+  FROM couchdata ORDER BY key
+),
+alldocswithextra AS ( 
+  SELECT key, '{ "index":{"_id" : "' || key || '"} }' AS doc, '1' AS myorder FROM alldocs 
+  UNION ALL 
+  SELECT key, doc::text, '2' AS myorder FROM alldocs ORDER BY key, myorder
+),
+chunked AS ( 
+  SELECT doc, ((ROW_NUMBER() OVER (ORDER BY key) - 1)  / 1000) +1 AS chunk_no  --make batch count divisible by 2
+  FROM alldocswithextra
+),
+chunked_docs AS (  -- Bulk up bulk_docs chunks to send 
+    SELECT array_agg(doc) AS bulk_docs, chunk_no FROM chunked GROUP BY chunk_no  ORDER BY chunk_no
+)
+SELECT chunk_no, status 
+FROM chunked_docs,
+     http_post('http://192.168.3.20:9200/secondindex/_bulk', 
+     array_to_string(array_append(bulk_docs,E'\n'),E'\n'),
+     'application/x-ndjson'::text); 
+```
+
+A 1000 docs per batch:
+
+
+
 
 
 ## Pagination
