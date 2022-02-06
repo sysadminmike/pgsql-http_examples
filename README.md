@@ -607,7 +607,7 @@ chunked_docs AS (  -- Bulk up bulk_docs chunks to send
 )
 SELECT chunk_no, status 
 FROM chunked_docs,
-     http_post('http://192.168.3.20:9200/secondindex/_bulk', 
+     http_post('http://192.168.3.20:9200/myindex/_bulk', 
      array_to_string(array_append(bulk_docs,E'\n'),E'\n'),
      'application/x-ndjson'::text); 
 ```
