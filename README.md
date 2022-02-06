@@ -12,7 +12,7 @@ Elasticsearch (query and updating)
 There is little infomation about this extension as I do not think people realise how useful it is, hopefully these examples will give other people ideas what can be done.
 
 
-## Grab cvs file from a webserver
+## Grab csv file from a webserver
 
 ```
 SELECT content FROM http_get('https://cdn.wsform.com/wp-content/uploads/2018/09/country.csv');
@@ -665,11 +665,14 @@ CREATE TRIGGER es_delete_trigger AFTER DELETE ON public.estable FOR EACH ROW EXE
 
 ## Pagination
 How to deal with API which have limited number of items per page and do not allow you to access them in one request.
+
 Create function to load each page/chunk to a temp table.
+
 Another way maybe to run UNION ALL with multpile requests to server with page_no incrementing
 
+
 ## Other uses
-Mailgun or twillio to download and archive logs as they limited retention period but logs are exposed via api.
+Mailgun or twillio to download and archive logs as they limited retention period but logs are exposed via api.   
 Other useful APIs to example use with?
 
 
