@@ -477,10 +477,8 @@ LANGUAGE plpgsql VOLATILE
 
 Assuming ES already has the data from the previous couchdb example, later on will give example how this was done.
 
-```curl -XGET 'http://192.168.3.20:9200/_cat/indices?v&pretty' -q```
 
-
-Curl query:
+Curl query we are going to get results into postgres for:
 
 ```curl -X GET "http://192.168.3.20:9200/myindex/_search?pretty" -H 'Content-Type: application/json' -d'{"query": {"query_string": {"query": "(FreeBSD) AND (Postgres)","fields": ["title","description"]}}}'```
 
