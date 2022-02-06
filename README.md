@@ -524,7 +524,6 @@ CREATE TABLE public.estable (
 );
 ```
 
-
 We need a trigger function to update ES when table is updated.
 
 ```
@@ -560,6 +559,23 @@ Lets grab the data we had from the couchdb materialized view and insert into the
 ```
 INSERT INTO estable (key, doc)
    SELECT key, doc FROM couchdata;
+```
+
+If there is another service we want to grab data from and insert in to the estable and elasticsearch at the same time we could do something like:
+
+```
+INSERT INTO estable (key, doc)
+INTO TABLE estable
+FROM 
+(
+  SELECT * FROM json_to_recordset(
+     (
+        SELECT (content::json->>'rows')::json 
+        FROM http_get('http://192.168.3.25:5984/articles/_all_docs?include_docs=true')
+      )
+ 
+   ) AS couchdata (key text, doc jsonb)
+) AS x; 
 ```
 
 
@@ -625,7 +641,25 @@ So under 4 minutes which is only about 20 secs slower than when there was alread
 
 The bulk update to ES could be in a function to be called whenever a full index is required and the trigger function can then take care of any updates/inserts.
 
-TODO: Need to add DELETE example trigger.
+To deal with removing records from the estable we also need to remove records from ES.
+
+```
+CREATE OR REPLACE FUNCTION delete_es() RETURNS trigger AS $BODY$
+  DECLARE
+      RES RECORD;
+  BEGIN
+     SELECT * FROM http_delete('http://192.168.3.20:9200/myindex/_doc/' || OLD.key) INTO RES;
+     --Need to check RES for response code
+     --RAISE EXCEPTION 'Result: %', RES.content; -- enable for debugging
+     RETURN OLD;
+  END;
+  $BODY$
+LANGUAGE plpgsql VOLATILE;
+```
+
+```
+CREATE TRIGGER es_delete_trigger AFTER DELETE ON public.estable FOR EACH ROW EXECUTE FUNCTION public.delete_es();
+```
 
 
 
