@@ -524,7 +524,7 @@ Add add trigger to the table:
 CREATE TRIGGER es_upsert_trigger AFTER INSERT OR UPDATE ON public.estable FOR EACH ROW EXECUTE FUNCTION public.upsert_es();
 ```
 
-Lets grab the data we had from the couchdb materilised view and insert into the estable which the trigger in turn should insert into ES.
+Lets grab the data we had from the couchdb materialized view and insert into the estable which the trigger in turn should insert into ES.
 
 ```
 INSERT INTO estable (key, doc)
@@ -552,7 +552,10 @@ INSERT 0 295417
 Time: 453780.787 ms (07:33.781)
 ```
 
-So a significant improvement so lets bulk insert the records into ES 
+So a significant improvement.
+
+
+Lets bulk insert the records into ES 
 
 ```
 WITH alldocs AS ( 
@@ -578,9 +581,20 @@ FROM chunked_docs,
      'application/x-ndjson'::text); 
 ```
 
-A 1000 docs per batch:
+250 batch size:
+Time: 352147.458 ms (05:52.147)
 
+500 batch size:
+Time: 231784.233 ms (03:51.784)
 
+1000 batch size:
+Time: 238769.165 ms (03:58.769)
+
+So under 4 minutes which is only about 20 secs slower than when there was already a document in ES.
+
+The bulk update to ES could be in a function to be called whenever a full index is required and the trigger function can then take care of any updates/inserts.
+
+TODO: Need to add DELETE example trigger.
 
 
 
